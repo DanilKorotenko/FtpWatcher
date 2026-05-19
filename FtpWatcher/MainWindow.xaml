@@ -5,8 +5,148 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FtpWatcher"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="FTP Watcher" Height="560" Width="900"
+        Background="#F4F6F8"
+        FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <Style TargetType="TextBlock" x:Key="FieldLabel">
+            <Setter Property="Foreground" Value="#4A5568"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style TargetType="TextBox" x:Key="InputBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderBrush" Value="#CBD5E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="PasswordBox" x:Key="InputPwdBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderBrush" Value="#CBD5E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="Button" x:Key="PrimaryButton">
+            <Setter Property="Background" Value="#2B6CB0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2C5282"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#A0AEC0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
-    </Grid>
+    <DockPanel>
+        <!-- Header / Input panel -->
+        <Border DockPanel.Dock="Top" Background="White" Padding="16" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="FTP server address"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldLabel}" Text="Username" Margin="12,0,0,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Password" Margin="12,0,0,4"/>
+
+                <TextBox Grid.Row="1" Grid.Column="0"
+                         x:Name="ServerAddressTextBox"
+                         Style="{StaticResource InputBox}"
+                         Text="ftp://"
+                         KeyDown="ServerAddressTextBox_KeyDown"/>
+                <TextBox Grid.Row="1" Grid.Column="1"
+                         x:Name="UsernameTextBox"
+                         Style="{StaticResource InputBox}"
+                         Text="anonymous"
+                         Margin="12,0,0,0"/>
+                <PasswordBox Grid.Row="1" Grid.Column="2"
+                             x:Name="PasswordBox"
+                             Style="{StaticResource InputPwdBox}"
+                             Margin="12,0,0,0"/>
+                <Button Grid.Row="1" Grid.Column="3"
+                        x:Name="ListButton"
+                        Style="{StaticResource PrimaryButton}"
+                        Content="List folder"
+                        Margin="12,0,0,0"
+                        Click="ListButton_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Background="#EDF2F7" Padding="12,6" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusTextBlock" Grid.Column="0" Foreground="#4A5568" Text="Ready."/>
+                <ProgressBar x:Name="BusyProgressBar" Grid.Column="1"
+                             Width="120" Height="10"
+                             IsIndeterminate="True"
+                             Visibility="Collapsed"/>
+            </Grid>
+        </Border>
+
+        <!-- Main list view -->
+        <Border Padding="16">
+            <ListView x:Name="EntriesListView"
+                      BorderBrush="#E2E8F0"
+                      Background="White"
+                      AlternationCount="2">
+                <ListView.Resources>
+                    <Style TargetType="GridViewColumnHeader">
+                        <Setter Property="Padding" Value="8,6"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Background" Value="#F7FAFC"/>
+                    </Style>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="4,2"/>
+                        <Style.Triggers>
+                            <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                <Setter Property="Background" Value="#F7FAFC"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.Resources>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Type" Width="80" DisplayMemberBinding="{Binding TypeLabel}"/>
+                        <GridViewColumn Header="Name" Width="380" DisplayMemberBinding="{Binding Name}"/>
+                        <GridViewColumn Header="Size" Width="120" DisplayMemberBinding="{Binding SizeLabel}"/>
+                        <GridViewColumn Header="Modified" Width="180" DisplayMemberBinding="{Binding ModifiedLabel}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Border>
+    </DockPanel>
 </Window>
