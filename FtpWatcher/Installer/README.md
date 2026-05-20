@@ -58,10 +58,11 @@ The element itself is mandatory, but none of its attributes are mandatory - the 
 With only these two elements, the installer can be compiled, but trying to install it will result in nothing being installed.
 
 ```xml
-    <Package InstallScope="perMachine" Compressed="yes" />
+    <Package Scope="perUser" Compressed="yes" />
 ```
-- **InstallScope**
-  - set to *perUser* if installer does not require elevated privileges to install (set to *perMachine* if it does)
+- **Scope** (WiX v4; was *InstallScope* in WiX v3)
+  - *perUser* — installs for the current user only; does not require administrator privileges
+  - *perMachine* — installs for all users; typically requires elevation (default if omitted)
 - **Compressed**
   - if not set, the default is "no"
   - if not set or set to "no", files installed by the MSI are distributed alongside the MSI

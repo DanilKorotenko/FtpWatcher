@@ -8,9 +8,10 @@
         Version="1.0.$(var.BuildNumber)"
         Codepage="utf-8"
         Compressed="yes"
+        Scope="perUser"
         UpgradeCode="99cda1e0-4b00-49c5-9348-22f86f1b7cd1">
 
-        <StandardDirectory Id="ProgramFiles6432Folder">
+        <StandardDirectory Id="LocalAppDataFolder">
             <Directory Id="MANUFACTURERFOLDER" Name="dkorotenko">
                 <Directory Id="INTERNAL" Name="FtpWatcher" />
             </Directory>
