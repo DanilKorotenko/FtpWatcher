@@ -140,26 +140,32 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (entry.Type != FtpEntryType.File)
-        {
-            SetStatus($"Cannot copy '{entry.Name}': only files are supported.", isError: true);
-            return;
-        }
-
-        var remoteFileUri = new Uri(_currentDirectoryUri, entry.Name);
-        var localPath = Path.Combine(destinationFolder, entry.Name);
-
         var copyButton = sender as Button;
         if (copyButton is not null)
         {
             copyButton.IsEnabled = false;
         }
 
-        SetStatus($"Copying {entry.Name}...");
+        var isFolder = entry.Type == FtpEntryType.Directory;
+        SetStatus(isFolder ? $"Copying folder {entry.Name}..." : $"Copying {entry.Name}...");
+
+        var progress = new Progress<string>(current =>
+        {
+            var prefix = isFolder ? $"Copying folder {entry.Name}" : $"Copying {entry.Name}";
+            SetStatus($"{prefix}: {current}");
+        });
+
         try
         {
-            await FtpDirectoryClient.DownloadFileAsync(remoteFileUri, _currentCredentials, localPath);
-            SetStatus($"Copied {entry.Name} to {destinationFolder}.");
+            var fileCount = await FtpDirectoryClient.DownloadEntryAsync(
+                _currentDirectoryUri,
+                entry,
+                _currentCredentials,
+                destinationFolder,
+                progress: progress);
+
+            var itemLabel = isFolder ? $"folder {entry.Name}" : entry.Name;
+            SetStatus($"Copied {itemLabel} ({fileCount} file(s)) to {destinationFolder}.");
         }
         catch (WebException webEx) when (webEx.Response is FtpWebResponse ftpResponse)
         {

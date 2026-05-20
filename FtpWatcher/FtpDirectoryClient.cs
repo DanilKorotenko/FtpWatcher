@@ -104,4 +104,152 @@ public static class FtpDirectoryClient
             useAsync: true);
         await ftpStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Downloads a file or recursively downloads a directory into <paramref name="destinationFolder"/>.
+    /// </summary>
+    /// <returns>Number of files downloaded.</returns>
+    public static async Task<int> DownloadEntryAsync(
+        Uri parentDirectoryUri,
+        FtpEntry entry,
+        NetworkCredential credentials,
+        string destinationFolder,
+        CancellationToken cancellationToken = default,
+        IProgress<string>? progress = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationFolder);
+
+        return entry.Type switch
+        {
+            FtpEntryType.Directory => await DownloadDirectoryRecursiveAsync(
+                ToDirectoryUri(parentDirectoryUri, entry.Name),
+                credentials,
+                Path.Combine(destinationFolder, entry.Name),
+                cancellationToken,
+                progress).ConfigureAwait(false),
+
+            FtpEntryType.File => await DownloadSingleFileAsync(
+                parentDirectoryUri,
+                entry.Name,
+                credentials,
+                Path.Combine(destinationFolder, entry.Name),
+                cancellationToken,
+                progress).ConfigureAwait(false),
+
+            FtpEntryType.Symlink or FtpEntryType.Unknown => await TryDownloadAsFileAsync(
+                parentDirectoryUri,
+                entry.Name,
+                credentials,
+                Path.Combine(destinationFolder, entry.Name),
+                cancellationToken,
+                progress).ConfigureAwait(false),
+
+            _ => throw new NotSupportedException($"Cannot download entry type '{entry.Type}'.")
+        };
+    }
+
+    private static async Task<int> DownloadDirectoryRecursiveAsync(
+        Uri directoryUri,
+        NetworkCredential credentials,
+        string localDirectoryPath,
+        CancellationToken cancellationToken,
+        IProgress<string>? progress)
+    {
+        Directory.CreateDirectory(localDirectoryPath);
+
+        var entries = await ListDirectoryAsync(directoryUri, credentials, cancellationToken)
+            .ConfigureAwait(false);
+
+        var fileCount = 0;
+        foreach (var child in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (child.Type == FtpEntryType.Directory)
+            {
+                fileCount += await DownloadDirectoryRecursiveAsync(
+                    ToDirectoryUri(directoryUri, child.Name),
+                    credentials,
+                    Path.Combine(localDirectoryPath, child.Name),
+                    cancellationToken,
+                    progress).ConfigureAwait(false);
+            }
+            else if (child.Type == FtpEntryType.File)
+            {
+                fileCount += await DownloadSingleFileAsync(
+                    directoryUri,
+                    child.Name,
+                    credentials,
+                    Path.Combine(localDirectoryPath, child.Name),
+                    cancellationToken,
+                    progress).ConfigureAwait(false);
+            }
+            else
+            {
+                try
+                {
+                    fileCount += await TryDownloadAsFileAsync(
+                        directoryUri,
+                        child.Name,
+                        credentials,
+                        Path.Combine(localDirectoryPath, child.Name),
+                        cancellationToken,
+                        progress).ConfigureAwait(false);
+                }
+                catch (WebException)
+                {
+                    // Skip entries that cannot be downloaded as files.
+                }
+            }
+        }
+
+        return fileCount;
+    }
+
+    private static async Task<int> DownloadSingleFileAsync(
+        Uri parentDirectoryUri,
+        string fileName,
+        NetworkCredential credentials,
+        string localFilePath,
+        CancellationToken cancellationToken,
+        IProgress<string>? progress)
+    {
+        progress?.Report(fileName);
+        var fileUri = new Uri(parentDirectoryUri, fileName);
+        await DownloadFileAsync(fileUri, credentials, localFilePath, cancellationToken).ConfigureAwait(false);
+        return 1;
+    }
+
+    private static async Task<int> TryDownloadAsFileAsync(
+        Uri parentDirectoryUri,
+        string name,
+        NetworkCredential credentials,
+        string localFilePath,
+        CancellationToken cancellationToken,
+        IProgress<string>? progress)
+    {
+        try
+        {
+            return await DownloadSingleFileAsync(
+                parentDirectoryUri,
+                name,
+                credentials,
+                localFilePath,
+                cancellationToken,
+                progress).ConfigureAwait(false);
+        }
+        catch (WebException ex) when (ex.Response is FtpWebResponse { StatusCode: FtpStatusCode.ActionNotTakenFileUnavailable or FtpStatusCode.ActionNotTakenFileUnavailableOrBusy })
+        {
+            throw new NotSupportedException($"Cannot download '{name}': not a downloadable file.", ex);
+        }
+    }
+
+    private static Uri ToDirectoryUri(Uri parentUri, string directoryName)
+    {
+        var combined = new Uri(parentUri, directoryName);
+        var absolute = combined.AbsoluteUri;
+        return absolute.EndsWith("/", StringComparison.Ordinal)
+            ? combined
+            : new Uri(absolute + "/");
+    }
 }
