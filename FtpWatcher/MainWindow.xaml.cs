@@ -17,10 +17,13 @@ public partial class MainWindow : Window
 {
     private readonly ObservableCollection<FtpEntry> _entries = new();
     private readonly DispatcherTimer _watchTimer = new();
+    private readonly DispatcherTimer _watchProgressTimer = new();
     private Uri? _currentDirectoryUri;
     private NetworkCredential? _currentCredentials;
     private bool _isListing;
     private bool _isWatching;
+    private DateTime _watchCycleStartUtc;
+    private double _watchIntervalSeconds;
 
     public MainWindow()
     {
@@ -28,6 +31,8 @@ public partial class MainWindow : Window
         LoadUserSettings();
         EntriesListView.ItemsSource = _entries;
         _watchTimer.Tick += WatchTimer_Tick;
+        _watchProgressTimer.Tick += WatchProgressTimer_Tick;
+        _watchProgressTimer.Interval = TimeSpan.FromMilliseconds(100);
     }
 
     private async void ListButton_Click(object sender, RoutedEventArgs e)
@@ -95,10 +100,12 @@ public partial class MainWindow : Window
         }
 
         _watchTimer.Interval = TimeSpan.FromSeconds(seconds);
+        _watchIntervalSeconds = seconds;
         _isWatching = true;
         StartWatchButton.Content = "Stop watch";
         SetWatchInputsEnabled(false);
         SetStatus($"Watching FTP every {seconds} second(s)...");
+        StartWatchProgress();
 
         await ListDirectoryAsync(fromWatch: true);
         _watchTimer.Start();
@@ -117,10 +124,42 @@ public partial class MainWindow : Window
     private void StopWatch()
     {
         _watchTimer.Stop();
+        StopWatchProgress();
         _isWatching = false;
         StartWatchButton.Content = "Start watch";
         SetWatchInputsEnabled(true);
         SetStatus("Watch stopped.");
+    }
+
+    private void StartWatchProgress()
+    {
+        ResetWatchProgressCycle();
+        WatchTimeoutProgressBar.Visibility = Visibility.Visible;
+        _watchProgressTimer.Start();
+    }
+
+    private void StopWatchProgress()
+    {
+        _watchProgressTimer.Stop();
+        WatchTimeoutProgressBar.Visibility = Visibility.Collapsed;
+        WatchTimeoutProgressBar.Value = 0;
+    }
+
+    private void ResetWatchProgressCycle()
+    {
+        _watchCycleStartUtc = DateTime.UtcNow;
+        WatchTimeoutProgressBar.Value = 0;
+    }
+
+    private void WatchProgressTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_isWatching || _watchIntervalSeconds <= 0)
+        {
+            return;
+        }
+
+        var elapsedSeconds = (DateTime.UtcNow - _watchCycleStartUtc).TotalSeconds;
+        WatchTimeoutProgressBar.Value = Math.Min(100, elapsedSeconds / _watchIntervalSeconds * 100);
     }
 
     private async void OpenFolderMenuItem_Click(object sender, RoutedEventArgs e)
@@ -379,7 +418,13 @@ public partial class MainWindow : Window
 
             var prefix = _isWatching ? "Watch: " : string.Empty;
             var itemCount = _entries.Count(e => !e.IsParentLink);
-            SetStatus($"{prefix}Listed {itemCount} item(s) from {directoryUri}.");
+            var completedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            SetStatus($"{prefix}Listed {itemCount} item(s) from {directoryUri} at {completedAt}.");
+
+            if (_isWatching)
+            {
+                ResetWatchProgressCycle();
+            }
         }
         catch (WebException webEx) when (webEx.Response is FtpWebResponse ftpResponse)
         {
@@ -531,6 +576,7 @@ public partial class MainWindow : Window
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _watchTimer.Stop();
+        _watchProgressTimer.Stop();
         SaveUserSettings();
     }
 }

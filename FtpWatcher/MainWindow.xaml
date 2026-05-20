@@ -220,12 +220,22 @@
                              MaxLength="6"
                              PreviewTextInput="RefreshTimeoutTextBox_PreviewTextInput"
                              LostFocus="RefreshTimeoutTextBox_LostFocus"/>
-                    <Button Grid.Row="1" Grid.Column="2"
-                            x:Name="StartWatchButton"
-                            Style="{StaticResource PrimaryButton}"
-                            Content="Start watch"
-                            Margin="12,0,0,0"
-                            Click="StartWatchButton_Click"/>
+                    <StackPanel Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2"
+                                Orientation="Horizontal"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Center">
+                        <Button x:Name="StartWatchButton"
+                                Style="{StaticResource PrimaryButton}"
+                                Content="Start watch"
+                                Click="StartWatchButton_Click"/>
+                        <ProgressBar x:Name="WatchTimeoutProgressBar"
+                                     Width="140"
+                                     Height="10"
+                                     Margin="12,0,0,0"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Visibility="Collapsed"/>
+                    </StackPanel>
                 </Grid>
             </StackPanel>
         </Border>
