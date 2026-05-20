@@ -123,9 +123,67 @@ public partial class MainWindow : Window
         SetStatus("Watch stopped.");
     }
 
+    private async void OpenFolderMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Parent: ContextMenu { PlacementTarget: FrameworkElement target } }
+            && target.DataContext is FtpEntry entry)
+        {
+            await NavigateToEntryAsync(entry);
+        }
+    }
+
+    private async void EntriesListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (EntriesListView.SelectedItem is FtpEntry entry &&
+            (entry.IsParentLink || entry.Type == FtpEntryType.Directory))
+        {
+            await NavigateToEntryAsync(entry);
+        }
+    }
+
+    private async Task NavigateToEntryAsync(FtpEntry entry)
+    {
+        if (_currentDirectoryUri is null)
+        {
+            SetStatus("List the FTP folder first.", isError: true);
+            return;
+        }
+
+        Uri? targetUri;
+        if (entry.IsParentLink)
+        {
+            if (!FtpDirectoryClient.TryGetParentDirectoryUri(_currentDirectoryUri, out targetUri))
+            {
+                SetStatus("Already at the root folder.", isError: true);
+                return;
+            }
+        }
+        else if (entry.Type == FtpEntryType.Directory)
+        {
+            targetUri = FtpDirectoryClient.ToDirectoryUri(_currentDirectoryUri, entry.Name);
+        }
+        else
+        {
+            return;
+        }
+
+        await NavigateToDirectoryAsync(targetUri!);
+    }
+
+    private async Task NavigateToDirectoryAsync(Uri directoryUri)
+    {
+        ServerAddressTextBox.Text = FtpDirectoryClient.ToDisplayUri(directoryUri);
+        await ListDirectoryAsync();
+    }
+
     private async void DeleteEntryButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: FtpEntry entry })
+        {
+            return;
+        }
+
+        if (entry.IsParentLink)
         {
             return;
         }
@@ -187,6 +245,11 @@ public partial class MainWindow : Window
     private async void CopyEntryButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: FtpEntry entry })
+        {
+            return;
+        }
+
+        if (entry.IsParentLink)
         {
             return;
         }
@@ -291,10 +354,22 @@ public partial class MainWindow : Window
 
         try
         {
-            var entries = await FtpDirectoryClient.ListDirectoryAsync(ftpUri!, credentials);
+            var directoryUri = FtpDirectoryClient.NormalizeDirectoryUri(ftpUri!);
+            var entries = await FtpDirectoryClient.ListDirectoryAsync(directoryUri, credentials);
 
-            _currentDirectoryUri = ftpUri;
+            _currentDirectoryUri = directoryUri;
             _currentCredentials = credentials;
+            ServerAddressTextBox.Text = FtpDirectoryClient.ToDisplayUri(directoryUri);
+
+            if (FtpDirectoryClient.TryGetParentDirectoryUri(directoryUri, out _))
+            {
+                _entries.Add(new FtpEntry
+                {
+                    Name = "..",
+                    Type = FtpEntryType.Directory,
+                    IsParentLink = true
+                });
+            }
 
             foreach (var entry in entries.OrderByDescending(x => x.Type == FtpEntryType.Directory)
                                          .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
@@ -303,7 +378,8 @@ public partial class MainWindow : Window
             }
 
             var prefix = _isWatching ? "Watch: " : string.Empty;
-            SetStatus($"{prefix}Listed {_entries.Count} item(s) from {ftpUri}.");
+            var itemCount = _entries.Count(e => !e.IsParentLink);
+            SetStatus($"{prefix}Listed {itemCount} item(s) from {directoryUri}.");
         }
         catch (WebException webEx) when (webEx.Response is FtpWebResponse ftpResponse)
         {

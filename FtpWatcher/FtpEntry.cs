@@ -17,14 +17,19 @@ public class FtpEntry
     public long? Size { get; init; }
     public DateTime? Modified { get; init; }
     public string? RawLine { get; init; }
+    public bool IsParentLink { get; init; }
 
-    public string TypeLabel => Type switch
-    {
-        FtpEntryType.Directory => "Folder",
-        FtpEntryType.File => "File",
-        FtpEntryType.Symlink => "Link",
-        _ => string.Empty
-    };
+    public bool IsNavigationEntry => IsParentLink || Type == FtpEntryType.Directory;
+
+    public string TypeLabel => IsParentLink
+        ? string.Empty
+        : Type switch
+        {
+            FtpEntryType.Directory => "Folder",
+            FtpEntryType.File => "File",
+            FtpEntryType.Symlink => "Link",
+            _ => string.Empty
+        };
 
     public string SizeLabel
     {

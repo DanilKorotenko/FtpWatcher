@@ -10,6 +10,9 @@
         FontFamily="Segoe UI" FontSize="13"
         Closing="Window_Closing">
     <Window.Resources>
+        <ContextMenu x:Key="FolderEntryContextMenu">
+            <MenuItem Header="Open" Click="OpenFolderMenuItem_Click"/>
+        </ContextMenu>
         <Style TargetType="TextBlock" x:Key="FieldLabel">
             <Setter Property="Foreground" Value="#4A5568"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -247,7 +250,8 @@
             <ListView x:Name="EntriesListView"
                       BorderBrush="#E2E8F0"
                       Background="White"
-                      AlternationCount="2">
+                      AlternationCount="2"
+                      MouseDoubleClick="EntriesListView_MouseDoubleClick">
                 <ListView.Resources>
                     <Style TargetType="GridViewColumnHeader">
                         <Setter Property="Padding" Value="8,6"/>
@@ -257,10 +261,20 @@
                     </Style>
                     <Style TargetType="ListViewItem">
                         <Setter Property="Padding" Value="4,2"/>
+                        <Setter Property="ContextMenu" Value="{StaticResource FolderEntryContextMenu}"/>
                         <Style.Triggers>
                             <Trigger Property="ItemsControl.AlternationIndex" Value="1">
                                 <Setter Property="Background" Value="#F7FAFC"/>
                             </Trigger>
+                            <DataTrigger Binding="{Binding Type}" Value="{x:Static local:FtpEntryType.File}">
+                                <Setter Property="ContextMenu" Value="{x:Null}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Type}" Value="{x:Static local:FtpEntryType.Symlink}">
+                                <Setter Property="ContextMenu" Value="{x:Null}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Type}" Value="{x:Static local:FtpEntryType.Unknown}">
+                                <Setter Property="ContextMenu" Value="{x:Null}"/>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </ListView.Resources>
@@ -274,9 +288,18 @@
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Content="Copy"
-                                            Style="{StaticResource CopyButton}"
                                             Click="CopyEntryButton_Click"
-                                            Tag="{Binding}"/>
+                                            Tag="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource CopyButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsParentLink}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -284,9 +307,18 @@
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Content="Delete"
-                                            Style="{StaticResource DeleteButton}"
                                             Click="DeleteEntryButton_Click"
-                                            Tag="{Binding}"/>
+                                            Tag="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource DeleteButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsParentLink}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

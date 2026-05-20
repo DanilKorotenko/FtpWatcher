@@ -388,7 +388,7 @@ public static class FtpDirectoryClient
         using var response = (FtpWebResponse)await request.GetResponseAsync().ConfigureAwait(false);
     }
 
-    private static Uri ToDirectoryUri(Uri parentUri, string directoryName)
+    public static Uri ToDirectoryUri(Uri parentUri, string directoryName)
     {
         var combined = new Uri(parentUri, directoryName);
         var absolute = combined.AbsoluteUri;
@@ -396,4 +396,39 @@ public static class FtpDirectoryClient
             ? combined
             : new Uri(absolute + "/");
     }
+
+    public static Uri NormalizeDirectoryUri(Uri uri)
+    {
+        var absolute = uri.AbsoluteUri;
+        return absolute.EndsWith("/", StringComparison.Ordinal)
+            ? uri
+            : new Uri(absolute + "/");
+    }
+
+    public static bool TryGetParentDirectoryUri(Uri directoryUri, out Uri? parentUri)
+    {
+        parentUri = null;
+        var path = directoryUri.AbsolutePath.TrimEnd('/');
+        if (string.IsNullOrEmpty(path) || path == "/")
+        {
+            return false;
+        }
+
+        var lastSlash = path.LastIndexOf('/');
+        var parentPath = lastSlash <= 0 ? "/" : path[..lastSlash];
+        if (string.IsNullOrEmpty(parentPath))
+        {
+            parentPath = "/";
+        }
+
+        var builder = new UriBuilder(directoryUri)
+        {
+            Path = parentPath
+        };
+        parentUri = NormalizeDirectoryUri(builder.Uri);
+        return true;
+    }
+
+    public static string ToDisplayUri(Uri directoryUri) =>
+        directoryUri.AbsoluteUri.TrimEnd('/');
 }
