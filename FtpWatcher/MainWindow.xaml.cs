@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        LoadUserSettings();
         EntriesListView.ItemsSource = _entries;
         _watchTimer.Tick += WatchTimer_Tick;
     }
@@ -56,6 +57,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() == true)
         {
             DestinationFolderTextBox.Text = dialog.FolderName;
+            SaveUserSettings();
         }
     }
 
@@ -356,8 +358,42 @@ public partial class MainWindow : Window
             : System.Windows.Media.Brushes.DimGray;
     }
 
+    private void LoadUserSettings()
+    {
+        var settings = UserSettingsStore.Load();
+
+        ServerAddressTextBox.Text = settings.ServerAddress;
+        UsernameTextBox.Text = settings.Username;
+        PasswordBox.Password = settings.Password;
+        DestinationFolderTextBox.Text = settings.DestinationFolder;
+        RefreshTimeoutTextBox.Text = settings.RefreshTimeoutSeconds;
+
+        if (!TryGetRefreshTimeoutSeconds(out _))
+        {
+            RefreshTimeoutTextBox.Text = "60";
+        }
+    }
+
+    private void SaveUserSettings()
+    {
+        if (!TryGetRefreshTimeoutSeconds(out _))
+        {
+            RefreshTimeoutTextBox.Text = "60";
+        }
+
+        UserSettingsStore.Save(new UserSettings
+        {
+            ServerAddress = ServerAddressTextBox.Text ?? string.Empty,
+            Username = UsernameTextBox.Text ?? string.Empty,
+            Password = PasswordBox.Password,
+            DestinationFolder = DestinationFolderTextBox.Text ?? string.Empty,
+            RefreshTimeoutSeconds = RefreshTimeoutTextBox.Text ?? "60"
+        });
+    }
+
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _watchTimer.Stop();
+        SaveUserSettings();
     }
 }
