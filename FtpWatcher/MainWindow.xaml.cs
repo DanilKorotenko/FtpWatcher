@@ -123,6 +123,67 @@ public partial class MainWindow : Window
         SetStatus("Watch stopped.");
     }
 
+    private async void DeleteEntryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: FtpEntry entry })
+        {
+            return;
+        }
+
+        if (_currentDirectoryUri is null || _currentCredentials is null)
+        {
+            SetStatus("List the FTP folder first.", isError: true);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            "Are you sure?",
+            "Confirm delete",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var deleteButton = sender as Button;
+        if (deleteButton is not null)
+        {
+            deleteButton.IsEnabled = false;
+        }
+
+        var isFolder = entry.Type == FtpEntryType.Directory;
+        SetStatus(isFolder ? $"Deleting folder {entry.Name}..." : $"Deleting {entry.Name}...");
+
+        try
+        {
+            await FtpDirectoryClient.DeleteEntryAsync(
+                _currentDirectoryUri,
+                entry,
+                _currentCredentials);
+
+            _entries.Remove(entry);
+            var itemLabel = isFolder ? $"folder {entry.Name}" : entry.Name;
+            SetStatus($"Deleted {itemLabel} from FTP.");
+        }
+        catch (WebException webEx) when (webEx.Response is FtpWebResponse ftpResponse)
+        {
+            SetStatus($"FTP error: {ftpResponse.StatusCode} - {ftpResponse.StatusDescription?.Trim()}", isError: true);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to delete {entry.Name}: {ex.Message}", isError: true);
+        }
+        finally
+        {
+            if (deleteButton is not null)
+            {
+                deleteButton.IsEnabled = true;
+            }
+        }
+    }
+
     private async void CopyEntryButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: FtpEntry entry })

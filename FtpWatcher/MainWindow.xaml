@@ -66,6 +66,35 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style TargetType="Button" x:Key="DeleteButton">
+            <Setter Property="Background" Value="#E53E3E"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#C53030"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#A0AEC0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="Button" x:Key="CopyButton">
             <Setter Property="Background" Value="#38A169"/>
             <Setter Property="Foreground" Value="White"/>
@@ -238,7 +267,7 @@
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Header="Type" Width="72" DisplayMemberBinding="{Binding TypeLabel}"/>
-                        <GridViewColumn Header="Name" Width="320" DisplayMemberBinding="{Binding Name}"/>
+                        <GridViewColumn Header="Name" Width="280" DisplayMemberBinding="{Binding Name}"/>
                         <GridViewColumn Header="Size" Width="100" DisplayMemberBinding="{Binding SizeLabel}"/>
                         <GridViewColumn Header="Modified" Width="150" DisplayMemberBinding="{Binding ModifiedLabel}"/>
                         <GridViewColumn Header="" Width="72">
@@ -247,6 +276,16 @@
                                     <Button Content="Copy"
                                             Style="{StaticResource CopyButton}"
                                             Click="CopyEntryButton_Click"
+                                            Tag="{Binding}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="" Width="72">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="Delete"
+                                            Style="{StaticResource DeleteButton}"
+                                            Click="DeleteEntryButton_Click"
                                             Tag="{Binding}"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>

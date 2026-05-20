@@ -244,6 +244,150 @@ public static class FtpDirectoryClient
         }
     }
 
+    /// <summary>
+    /// Deletes a file or recursively deletes a directory on the FTP server.
+    /// </summary>
+    public static async Task DeleteEntryAsync(
+        Uri parentDirectoryUri,
+        FtpEntry entry,
+        NetworkCredential credentials,
+        CancellationToken cancellationToken = default)
+    {
+        switch (entry.Type)
+        {
+            case FtpEntryType.Directory:
+                await DeleteDirectoryRecursiveAsync(
+                    ToDirectoryUri(parentDirectoryUri, entry.Name),
+                    credentials,
+                    cancellationToken).ConfigureAwait(false);
+                break;
+
+            case FtpEntryType.File:
+                await DeleteFileAsync(
+                    new Uri(parentDirectoryUri, entry.Name),
+                    credentials,
+                    cancellationToken).ConfigureAwait(false);
+                break;
+
+            case FtpEntryType.Symlink or FtpEntryType.Unknown:
+                await TryDeleteEntryAsync(
+                    parentDirectoryUri,
+                    entry.Name,
+                    credentials,
+                    cancellationToken).ConfigureAwait(false);
+                break;
+
+            default:
+                throw new NotSupportedException($"Cannot delete entry type '{entry.Type}'.");
+        }
+    }
+
+    public static async Task DeleteFileAsync(
+        Uri fileUri,
+        NetworkCredential credentials,
+        CancellationToken cancellationToken = default)
+    {
+        await ExecuteFtpCommandAsync(
+            fileUri,
+            WebRequestMethods.Ftp.DeleteFile,
+            credentials,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task RemoveDirectoryAsync(
+        Uri directoryUri,
+        NetworkCredential credentials,
+        CancellationToken cancellationToken = default)
+    {
+        await ExecuteFtpCommandAsync(
+            directoryUri,
+            WebRequestMethods.Ftp.RemoveDirectory,
+            credentials,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task DeleteDirectoryRecursiveAsync(
+        Uri directoryUri,
+        NetworkCredential credentials,
+        CancellationToken cancellationToken)
+    {
+        var entries = await ListDirectoryAsync(directoryUri, credentials, cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var child in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (child.Type == FtpEntryType.Directory)
+            {
+                await DeleteDirectoryRecursiveAsync(
+                    ToDirectoryUri(directoryUri, child.Name),
+                    credentials,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await DeleteFileAsync(
+                    new Uri(directoryUri, child.Name),
+                    credentials,
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        await RemoveDirectoryAsync(directoryUri, credentials, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task TryDeleteEntryAsync(
+        Uri parentDirectoryUri,
+        string name,
+        NetworkCredential credentials,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await DeleteFileAsync(
+                new Uri(parentDirectoryUri, name),
+                credentials,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (WebException ex) when (ex.Response is FtpWebResponse)
+        {
+            await DeleteDirectoryRecursiveAsync(
+                ToDirectoryUri(parentDirectoryUri, name),
+                credentials,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task ExecuteFtpCommandAsync(
+        Uri uri,
+        string method,
+        NetworkCredential credentials,
+        CancellationToken cancellationToken)
+    {
+        if (uri.Scheme is not ("ftp" or "ftps"))
+        {
+            throw new ArgumentException("URI must use the ftp or ftps scheme.", nameof(uri));
+        }
+
+#pragma warning disable SYSLIB0014
+        var request = (FtpWebRequest)WebRequest.Create(uri);
+#pragma warning restore SYSLIB0014
+        request.Method = method;
+        request.Credentials = credentials;
+        request.UseBinary = true;
+        request.UsePassive = true;
+        request.KeepAlive = false;
+        request.EnableSsl = uri.Scheme == "ftps";
+
+        using var registration = cancellationToken.Register(() =>
+        {
+            try { request.Abort(); } catch { /* ignore */ }
+        });
+
+        using var response = (FtpWebResponse)await request.GetResponseAsync().ConfigureAwait(false);
+    }
+
     private static Uri ToDirectoryUri(Uri parentUri, string directoryName)
     {
         var combined = new Uri(parentUri, directoryName);
