@@ -101,30 +101,7 @@
         <!-- Header / Input panel -->
         <Border DockPanel.Dock="Top" Background="White" Padding="16" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
             <StackPanel>
-                <!-- Row 1: destination folder -->
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Destination folder"/>
-                    <TextBox Grid.Row="1" Grid.Column="0"
-                             x:Name="DestinationFolderTextBox"
-                             Style="{StaticResource InputBox}"/>
-                    <Button Grid.Row="1" Grid.Column="1"
-                            x:Name="ChooseFolderButton"
-                            Style="{StaticResource SecondaryButton}"
-                            Content="Choose folder"
-                            Margin="12,0,0,0"
-                            Click="ChooseFolderButton_Click"/>
-                </Grid>
-
-                <!-- Row 2: FTP connection -->
+                <!-- Row 1: FTP connection -->
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -161,6 +138,29 @@
                             Content="List folder"
                             Margin="12,0,0,0"
                             Click="ListButton_Click"/>
+                </Grid>
+
+                <!-- Row 2: destination folder -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Destination folder"/>
+                    <TextBox Grid.Row="1" Grid.Column="0"
+                             x:Name="DestinationFolderTextBox"
+                             Style="{StaticResource InputBox}"/>
+                    <Button Grid.Row="1" Grid.Column="1"
+                            x:Name="ChooseFolderButton"
+                            Style="{StaticResource SecondaryButton}"
+                            Content="Choose folder"
+                            Margin="12,0,0,0"
+                            Click="ChooseFolderButton_Click"/>
                 </Grid>
 
                 <!-- Row 3: watch settings -->
