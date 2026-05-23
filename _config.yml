@@ -9,4 +9,4 @@ show_downloads: true
 
 github:
   zip_url: https://github.com/DanilKorotenko/FtpWatcher/zipball/main
-  msi_url: https://github.com/DanilKorotenko/FtpWatcher/releases/latest
+  latest_release_url: https://github.com/DanilKorotenko/FtpWatcher/releases/latest
