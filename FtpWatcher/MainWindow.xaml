@@ -228,13 +228,20 @@
                                 Style="{StaticResource PrimaryButton}"
                                 Content="Start watch"
                                 Click="StartWatchButton_Click"/>
-                        <ProgressBar x:Name="WatchTimeoutProgressBar"
-                                     Width="140"
-                                     Height="10"
-                                     Margin="12,0,0,0"
-                                     Minimum="0"
-                                     Maximum="100"
-                                     Visibility="Collapsed"/>
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="WatchTimeRemainingTextBlock"
+                                       Foreground="#4A5568"
+                                       FontSize="11"
+                                       Margin="0,0,0,4"
+                                       Visibility="Collapsed"
+                                       Text="Next refresh in 60 s"/>
+                            <ProgressBar x:Name="WatchTimeoutProgressBar"
+                                         Width="140"
+                                         Height="10"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Visibility="Collapsed"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </StackPanel>

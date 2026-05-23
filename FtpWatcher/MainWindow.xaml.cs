@@ -134,6 +134,7 @@ public partial class MainWindow : Window
     private void StartWatchProgress()
     {
         ResetWatchProgressCycle();
+        WatchTimeRemainingTextBlock.Visibility = Visibility.Visible;
         WatchTimeoutProgressBar.Visibility = Visibility.Visible;
         _watchProgressTimer.Start();
     }
@@ -141,6 +142,7 @@ public partial class MainWindow : Window
     private void StopWatchProgress()
     {
         _watchProgressTimer.Stop();
+        WatchTimeRemainingTextBlock.Visibility = Visibility.Collapsed;
         WatchTimeoutProgressBar.Visibility = Visibility.Collapsed;
         WatchTimeoutProgressBar.Value = 0;
     }
@@ -148,7 +150,7 @@ public partial class MainWindow : Window
     private void ResetWatchProgressCycle()
     {
         _watchCycleStartUtc = DateTime.UtcNow;
-        WatchTimeoutProgressBar.Value = 0;
+        UpdateWatchProgressDisplay();
     }
 
     private void WatchProgressTimer_Tick(object? sender, EventArgs e)
@@ -158,8 +160,32 @@ public partial class MainWindow : Window
             return;
         }
 
+        UpdateWatchProgressDisplay();
+    }
+
+    private void UpdateWatchProgressDisplay()
+    {
         var elapsedSeconds = (DateTime.UtcNow - _watchCycleStartUtc).TotalSeconds;
+        var remainingSeconds = Math.Max(0, _watchIntervalSeconds - elapsedSeconds);
+
         WatchTimeoutProgressBar.Value = Math.Min(100, elapsedSeconds / _watchIntervalSeconds * 100);
+        WatchTimeRemainingTextBlock.Text = $"Next refresh in {FormatTimeRemaining(remainingSeconds)}";
+    }
+
+    private static string FormatTimeRemaining(double totalSeconds)
+    {
+        var seconds = (int)Math.Ceiling(totalSeconds);
+        if (seconds >= 3600)
+        {
+            return $"{seconds / 3600}:{seconds % 3600 / 60:D2}:{seconds % 60:D2}";
+        }
+
+        if (seconds >= 60)
+        {
+            return $"{seconds / 60}:{seconds % 60:D2}";
+        }
+
+        return $"{seconds} s";
     }
 
     private async void OpenFolderMenuItem_Click(object sender, RoutedEventArgs e)
