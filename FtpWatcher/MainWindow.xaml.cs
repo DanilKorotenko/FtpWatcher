@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -9,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace FtpWatcher;
@@ -18,16 +20,25 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<FtpEntry> _entries = new();
     private readonly DispatcherTimer _watchTimer = new();
     private readonly DispatcherTimer _watchProgressTimer = new();
+    private readonly Forms.NotifyIcon _notifyIcon;
     private Uri? _currentDirectoryUri;
     private NetworkCredential? _currentCredentials;
     private bool _isListing;
     private bool _isWatching;
     private DateTime _watchCycleStartUtc;
     private double _watchIntervalSeconds;
+    private string? _watchSnapshotDirectory;
+    private HashSet<string>? _watchSnapshot;
 
     public MainWindow()
     {
         InitializeComponent();
+        _notifyIcon = new Forms.NotifyIcon
+        {
+            Visible = true,
+            Text = "FTP Watcher",
+            Icon = System.Drawing.SystemIcons.Information
+        };
         LoadUserSettings();
         EntriesListView.ItemsSource = _entries;
         _watchTimer.Tick += WatchTimer_Tick;
@@ -40,7 +51,7 @@ public partial class MainWindow : Window
         await ListDirectoryAsync();
     }
 
-    private async void ServerAddressTextBox_KeyDown(object sender, KeyEventArgs e)
+    private async void ServerAddressTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
@@ -101,6 +112,8 @@ public partial class MainWindow : Window
 
         _watchTimer.Interval = TimeSpan.FromSeconds(seconds);
         _watchIntervalSeconds = seconds;
+        _watchSnapshotDirectory = null;
+        _watchSnapshot = null;
         _isWatching = true;
         StartWatchButton.Content = "Stop watch";
         SetWatchInputsEnabled(false);
@@ -243,7 +256,7 @@ public partial class MainWindow : Window
 
     private async void DeleteEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: FtpEntry entry })
+        if (sender is not System.Windows.Controls.Button { Tag: FtpEntry entry })
         {
             return;
         }
@@ -259,7 +272,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var confirm = MessageBox.Show(
+        var confirm = System.Windows.MessageBox.Show(
             "Are you sure?",
             "Confirm delete",
             MessageBoxButton.YesNo,
@@ -270,7 +283,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var deleteButton = sender as Button;
+        var deleteButton = sender as System.Windows.Controls.Button;
         if (deleteButton is not null)
         {
             deleteButton.IsEnabled = false;
@@ -309,7 +322,7 @@ public partial class MainWindow : Window
 
     private async void CopyEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: FtpEntry entry })
+        if (sender is not System.Windows.Controls.Button { Tag: FtpEntry entry })
         {
             return;
         }
@@ -331,7 +344,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var copyButton = sender as Button;
+        var copyButton = sender as System.Windows.Controls.Button;
         if (copyButton is not null)
         {
             copyButton.IsEnabled = false;
@@ -421,6 +434,7 @@ public partial class MainWindow : Window
         {
             var directoryUri = FtpDirectoryClient.NormalizeDirectoryUri(ftpUri!);
             var entries = await FtpDirectoryClient.ListDirectoryAsync(directoryUri, credentials);
+            HandleWatchChangeNotification(directoryUri, entries);
 
             _currentDirectoryUri = directoryUri;
             _currentCredentials = credentials;
@@ -566,6 +580,58 @@ public partial class MainWindow : Window
             : System.Windows.Media.Brushes.DimGray;
     }
 
+    private void HandleWatchChangeNotification(Uri directoryUri, IReadOnlyCollection<FtpEntry> entries)
+    {
+        if (!_isWatching)
+        {
+            return;
+        }
+
+        var currentDirectory = directoryUri.AbsoluteUri;
+        var currentSnapshot = BuildEntrySnapshot(entries);
+
+        if (_watchSnapshot is null || !string.Equals(_watchSnapshotDirectory, currentDirectory, StringComparison.Ordinal))
+        {
+            _watchSnapshotDirectory = currentDirectory;
+            _watchSnapshot = currentSnapshot;
+            return;
+        }
+
+        if (!_watchSnapshot.SetEquals(currentSnapshot))
+        {
+            _watchSnapshot = currentSnapshot;
+            ShowToastNotification(
+                "FTP Watcher",
+                $"FTP content changed: {FtpDirectoryClient.ToDisplayUri(directoryUri)}");
+            return;
+        }
+
+        _watchSnapshot = currentSnapshot;
+    }
+
+    private static HashSet<string> BuildEntrySnapshot(IEnumerable<FtpEntry> entries)
+    {
+        return entries
+            .Select(entry =>
+                $"{entry.Type}|{entry.Name}|{entry.Size?.ToString() ?? string.Empty}|{entry.Modified?.ToUniversalTime().Ticks.ToString() ?? string.Empty}")
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private void ShowToastNotification(string title, string message)
+    {
+        try
+        {
+            _notifyIcon.BalloonTipTitle = title;
+            _notifyIcon.BalloonTipText = message;
+            _notifyIcon.BalloonTipIcon = Forms.ToolTipIcon.Info;
+            _notifyIcon.ShowBalloonTip(5000);
+        }
+        catch
+        {
+            // Ignore notification issues to keep watch flow stable.
+        }
+    }
+
     private void LoadUserSettings()
     {
         var settings = UserSettingsStore.Load();
@@ -603,6 +669,8 @@ public partial class MainWindow : Window
     {
         _watchTimer.Stop();
         _watchProgressTimer.Stop();
+        _notifyIcon.Visible = false;
+        _notifyIcon.Dispose();
         SaveUserSettings();
     }
 }
