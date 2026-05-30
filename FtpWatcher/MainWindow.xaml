@@ -297,6 +297,32 @@
                 </ListView.Resources>
                 <ListView.View>
                     <GridView>
+                        <GridViewColumn Header="Copied" Width="56">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="✓"
+                                               Foreground="#22C55E"
+                                               FontWeight="Bold"
+                                               FontSize="14"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCopied}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsParentLink}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                         <GridViewColumn Header="Type" Width="72" DisplayMemberBinding="{Binding TypeLabel}"/>
                         <GridViewColumn Header="Name" Width="280" DisplayMemberBinding="{Binding Name}"/>
                         <GridViewColumn Header="Size" Width="100" DisplayMemberBinding="{Binding SizeLabel}"/>

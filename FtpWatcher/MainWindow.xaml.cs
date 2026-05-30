@@ -74,6 +74,7 @@ public partial class MainWindow : Window
         {
             DestinationFolderTextBox.Text = dialog.FolderName;
             SaveUserSettings();
+            UpdateAllEntriesCopiedState();
         }
     }
 
@@ -370,6 +371,7 @@ public partial class MainWindow : Window
 
             var itemLabel = isFolder ? $"folder {entry.Name}" : entry.Name;
             SetStatus($"Copied {itemLabel} ({fileCount} file(s)) to {destinationFolder}.");
+            UpdateEntryCopiedState(entry, destinationFolder);
         }
         catch (WebException webEx) when (webEx.Response is FtpWebResponse ftpResponse)
         {
@@ -456,6 +458,8 @@ public partial class MainWindow : Window
                 _entries.Add(entry);
             }
 
+            UpdateAllEntriesCopiedState();
+
             var prefix = _isWatching ? "Watch: " : string.Empty;
             var itemCount = _entries.Count(e => !e.IsParentLink);
             var completedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -511,6 +515,41 @@ public partial class MainWindow : Window
 
         error = null;
         return true;
+    }
+
+    private void UpdateAllEntriesCopiedState()
+    {
+        if (!TryGetDestinationFolder(out var destinationFolder, out _))
+        {
+            foreach (var entry in _entries)
+            {
+                entry.IsCopied = false;
+            }
+
+            return;
+        }
+
+        foreach (var entry in _entries)
+        {
+            UpdateEntryCopiedState(entry, destinationFolder);
+        }
+    }
+
+    private static void UpdateEntryCopiedState(FtpEntry entry, string destinationFolder)
+    {
+        if (entry.IsParentLink)
+        {
+            entry.IsCopied = false;
+            return;
+        }
+
+        var localPath = Path.Combine(destinationFolder, entry.Name);
+        entry.IsCopied = entry.Type switch
+        {
+            FtpEntryType.Directory => Directory.Exists(localPath),
+            FtpEntryType.File => File.Exists(localPath),
+            _ => File.Exists(localPath) || Directory.Exists(localPath)
+        };
     }
 
     private bool TryGetRefreshTimeoutSeconds(out int seconds)

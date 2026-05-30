@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace FtpWatcher;
 
@@ -10,14 +12,38 @@ public enum FtpEntryType
     Unknown
 }
 
-public class FtpEntry
+public class FtpEntry : INotifyPropertyChanged
 {
+    private bool _isCopied;
+
     public string Name { get; init; } = string.Empty;
     public FtpEntryType Type { get; init; } = FtpEntryType.Unknown;
     public long? Size { get; init; }
     public DateTime? Modified { get; init; }
     public string? RawLine { get; init; }
     public bool IsParentLink { get; init; }
+
+    public bool IsCopied
+    {
+        get => _isCopied;
+        set
+        {
+            if (_isCopied == value)
+            {
+                return;
+            }
+
+            _isCopied = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 
     public bool IsNavigationEntry => IsParentLink || Type == FtpEntryType.Directory;
 
