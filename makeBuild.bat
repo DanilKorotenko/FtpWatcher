@@ -28,3 +28,7 @@ wix build -arch x64 -d BuildNumber=%buildNumber% .\Product.wxs -out %installerFi
 move "%installerFileName%" "../../"
 
 del ftp-watcher-%buildNumber%.wixpdb
+
+cd ..
+
+cd ..
