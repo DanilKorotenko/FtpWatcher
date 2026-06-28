@@ -3,7 +3,7 @@
 
     <Package ProductCode="*"
         Language="1033"
-        Manufacturer="dkorotenko"
+        Manufacturer="DPSU"
         Name="FTP Watcher"
         Version="1.0.$(var.BuildNumber)"
         Codepage="utf-8"
@@ -12,12 +12,16 @@
         UpgradeCode="99cda1e0-4b00-49c5-9348-22f86f1b7cd1">
 
         <StandardDirectory Id="LocalAppDataFolder">
-            <Directory Id="MANUFACTURERFOLDER" Name="dkorotenko">
+            <Directory Id="MANUFACTURERFOLDER" Name="DPSU">
                 <Directory Id="INTERNAL" Name="FtpWatcher" />
             </Directory>
         </StandardDirectory>
 
-        <MediaTemplate EmbedCab="yes" />
+		<StandardDirectory Id="ProgramMenuFolder">
+			<Directory Id="StartMenuShortcutFolder" Name="083" />
+		</StandardDirectory>
+
+		<MediaTemplate EmbedCab="yes" />
 
         <Files Directory="INTERNAL" Include="..\bin\Release\net9.0-windows\win-x64\publish\**" />
 
@@ -32,7 +36,7 @@
                 <Shortcut
                     Id="ApplicationStartMenuShortcutInFile"
                     Name="FtpWatcher"
-                    Directory="ProgramMenuFolder"
+                    Directory="StartMenuShortcutFolder"
                     WorkingDirectory="INTERNAL"
                     Target="[INTERNAL]FtpWatcher.exe"/>
             </Component>
